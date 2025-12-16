@@ -1,6 +1,7 @@
 package com.codegym.moviebackendjwt.config;
 
 import com.codegym.moviebackendjwt.service.JwtFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,8 +18,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @EnableWebSecurity
@@ -31,24 +30,66 @@ public class SecurityConfig {
     private JwtFilter jwtFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        return httpSecurity
-                .csrf(customizer -> customizer.disable())
-                .cors(cors -> {
-                })
-                .authorizeHttpRequests(request -> request
-                        .requestMatchers("register", "login")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/movies**")
-                        .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/movies**")
-                        .hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
+        return http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> {})
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) ->
+                                res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                        .accessDeniedHandler((req, res, e) ->
+                                res.sendError(HttpServletResponse.SC_FORBIDDEN))
+                )
+                .authorizeHttpRequests(auth -> auth
+
+                        .requestMatchers("/login", "/register", "/error")
+                        .permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/movies/**")
+                        .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/movies/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/movies/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/movies/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/api/genres/**")
+                        .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/genres/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/genres/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/genres/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/api/countries/**")
+                        .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/countries/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/api/countries/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/countries/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/api/users/**")
+                        .hasAuthority("ROLE_ADMIN")
+
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -66,19 +107,5 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
-    }
-
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5173")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*")
-                        .exposedHeaders("Authorization");
-            }
-        };
     }
 }

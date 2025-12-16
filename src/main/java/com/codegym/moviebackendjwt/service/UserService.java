@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,16 +29,17 @@ public class UserService {
     @Autowired
     private AuthenticationManager authManager;
 
-    private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     public Users register(Users user) {
         user.setPassword(encoder.encode(user.getPassword()));
-        Roles userRole = roleRepo.findByName("ROLE_USER");
-        user.setRoles(Set.of(userRole));
+        Roles roleUser = roleRepo.findByName("ROLE_USER");
+        user.setRoles(Set.of(roleUser));
         return repo.save(user);
     }
 
     public String verify(Users user) {
+
         Authentication authentication =
                 authManager.authenticate(
                         new UsernamePasswordAuthenticationToken(
@@ -47,8 +49,15 @@ public class UserService {
                 );
 
         if (authentication.isAuthenticated()) {
-            return jwtService.generateToken(user.getUsername());
+
+            UserDetails userDetails =
+                    (UserDetails) authentication.getPrincipal();
+
+            return jwtService.generateToken(
+                    userDetails.getUsername()
+            );
         }
+
         return "fail";
     }
 }
